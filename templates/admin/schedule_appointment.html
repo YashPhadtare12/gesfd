@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Schedule Appointment{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">
+            <i class="fas fa-calendar-plus me-2"></i>Schedule Appointment
+        </h4>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('schedule_appointment') }}">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="patient_id" class="form-label">Patient</label>
+                    <select class="form-select" id="patient_id" name="patient_id" required>
+                        <option value="">Select Patient</option>
+                        {% for patient in patients %}
+                            <option value="{{ patient.id }}" 
+                                {% if request.args.get('patient_id') == patient.id|string %}selected{% endif %}>
+                                {{ patient.name }} ({{ patient.age }} years)
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="doctor_id" class="form-label">Doctor</label>
+                    <select class="form-select" id="doctor_id" name="doctor_id" required>
+                        <option value="">Select Doctor</option>
+                        {% for doctor in doctors %}
+                            <option value="{{ doctor.id }}" 
+                                {% if request.args.get('doctor_id') == doctor.id|string %}selected{% endif %}>
+                                Dr. {{ doctor.name }} ({{ doctor.specialization }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="date" class="form-label">Date</label>
+                    <input type="date" class="form-control" id="date" name="date" required 
+                           min="{{ min_date }}">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="time_slot" class="form-label">Time Slot</label>
+                    <input type="hidden" id="time_slot" name="time_slot" required>
+                    <div id="time_slots" class="p-3 border rounded bg-light">
+                        <p class="text-muted mb-0">Please select a doctor and date to view available slots</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="notes" class="form-label">Notes</label>
+                <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+            </div>
+            
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-calendar-check me-1"></i>Schedule Appointment
+                </button>
+                <a href="{{ url_for('view_appointments') }}" class="btn btn-secondary">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Function to convert 24h time to 12h AM/PM format
+function formatTime(time24) {
+    const [hours, minutes] = time24.split(':');
+    const period = +hours >= 12 ? 'PM' : 'AM';
+    const hours12 = +hours % 12 || 12;
+    return `${hours12}:${minutes} ${period}`;
+}
+
+$(document).ready(function() {
+    // Doctor Time Slot Management
+    $('#doctor_id, #date').on('change', function() {
+        const doctorId = $('#doctor_id').val();
+        const date = $('#date').val();
+        
+        if (doctorId && date) {
+            $('#time_slots').html('<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div> Loading slots...</div>');
+            
+            $.getJSON(`/admin/get_doctor_slots/${doctorId}/${date}`)
+                .done(function(data) {
+                    if (data.error) {
+                        $('#time_slots').html(`<div class="alert alert-danger">${data.error}</div>`);
+                        return;
+                    }
+                    
+                    let html = '<div class="row g-2">';
+                    data.slots.forEach(slot => {
+                        const isBooked = data.booked_slots.includes(slot.start);
+                        const startTime = formatTime(slot.start);
+                        const endTime = formatTime(slot.end);
+                        
+                        html += `
+                            <div class="col-md-3 col-sm-4 col-6">
+                                <div class="slot p-2 text-center rounded ${isBooked ? 'booked bg-danger bg-opacity-10 text-danger' : 'available bg-light'} 
+                                    ${isBooked ? '' : 'cursor-pointer hover:bg-primary-light'}" 
+                                    data-start="${slot.start}" ${isBooked ? '' : 'onclick="selectSlot(this)"'}>
+                                    <div class="fw-bold small">${startTime}</div>
+                                    <div class="text-muted x-small">${endTime}</div>
+                                    ${isBooked ? '<div class="text-danger x-small mt-1"><i class="fas fa-lock"></i> Booked</div>' : ''}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    $('#time_slots').html(html);
+                })
+                .fail(function() {
+                    $('#time_slots').html('<div class="alert alert-danger">Error loading time slots</div>');
+                });
+        }
+    });
+});
+
+// Global function for slot selection
+function selectSlot(element) {
+    $('.slot.available').removeClass('bg-success text-white');
+    $(element).addClass('bg-success text-white');
+    $('#time_slot').val($(element).data('start'));
+}
+</script>
+
+<style>
+.slot {
+    transition: all 0.2s ease;
+    font-size: 0.85rem;
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.slot.available:hover {
+    background-color: rgba(74, 107, 255, 0.1) !important;
+}
+
+.slot.booked {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.slot.bg-success {
+    background-color: #28a745 !important;
+}
+
+.x-small {
+    font-size: 0.7rem;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+</style>
+{% endblock %}

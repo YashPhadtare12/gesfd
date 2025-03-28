@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Print Prescription{% endblock %}
+
+{% block content %}
+<div class="prescription-card container">
+    <div class="text-center mb-4">
+        <h2 class="mb-0 text-primary">{{ prescription.hospital_name }}</h2>
+        <h4 class="mt-3 border-top border-bottom py-2">PRESCRIPTION</h4>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <p><strong>Patient Name:</strong> {{ prescription.patient_name }}</p>
+            <p><strong>Age/Gender:</strong> {{ prescription.age }} years / {{ prescription.gender }}</p>
+            <p><strong>Date:</strong> {{ prescription.date }}</p>
+            <p><strong>Time:</strong> {{ prescription.time_slot }}</p>
+        </div>
+        <div class="col-md-6">
+            <p><strong>Doctor:</strong> Dr. {{ prescription.doctor_name }}</p>
+            <p><strong>Specialization:</strong> {{ prescription.specialization }}</p>
+        </div>
+    </div>
+    
+    <div class="mb-4">
+        <h5 class="border-bottom pb-2">Diagnosis:</h5>
+        <p class="ps-3">{{ prescription.diagnosis }}</p>
+    </div>
+    
+    <div class="mb-4">
+        <h5 class="border-bottom pb-2">Medicines:</h5>
+        <table class="table table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Medicine Name</th>
+                    <th>Dosage</th>
+                    <th>Frequency</th>
+                    <th>Timing</th>
+                    <th>With Meal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for medicine in prescription.medicines_parsed %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ medicine.name }}</td>
+                    <td>{{ medicine.dosage }}</td>
+                    <td>{{ medicine.frequency }}</td>
+                    <td>
+                        {% if medicine.morning == '1' %}Morning{% endif %}
+                        {% if medicine.afternoon == '1' %}{% if medicine.morning == '1' %}, {% endif %}Afternoon{% endif %}
+                        {% if medicine.evening == '1' %}{% if medicine.morning == '1' or medicine.afternoon == '1' %}, {% endif %}Evening{% endif %}
+                    </td>
+                    <td>{{ medicine.meal|capitalize }} meal</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% if prescription.instructions %}
+    <div class="mb-4">
+        <h5 class="border-bottom pb-2">Additional Instructions:</h5>
+        <p class="ps-3">{{ prescription.instructions }}</p>
+    </div>
+    {% endif %}
+    
+    <div class="mt-5">
+        <div class="d-flex justify-content-between">
+            <div class="text-center">
+                <p class="mb-0">_________________________</p>
+                <p class="mb-0">Patient Signature</p>
+                <p class="mb-0 text-muted small">Date: {{ prescription.date }}</p>
+            </div>
+            <div class="text-center">
+                <p class="mb-0">_________________________</p>
+                <p class="mb-0">Dr. {{ prescription.doctor_name }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="no-print mt-4 text-center">
+        <button onclick="window.print()" class="btn btn-primary me-2 print-btn">
+            <i class="fas fa-print me-1"></i>Print Prescription
+        </button>
+        <a href="{{ url_for('prescriptions', appointment_id=prescription.appointment_id) }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Prescription
+        </a>
+    </div>
+</div>
+
+<style>
+@media print {
+    body {
+        background: white !important;
+        color: black !important;
+        font-size: 12pt;
+    }
+    .prescription-card {
+        width: 100%;
+        margin: 0;
+        padding: 0.5in;
+    }
+    .prescription-card, .prescription-card * {
+        visibility: visible;
+    }
+    .no-print, .no-print * {
+        display: none !important;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0;
+        font-size: 11pt;
+    }
+    table, th, td {
+        border: 1px solid #ddd;
+    }
+    th, td {
+        padding: 8px;
+        text-align: left;
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+    h2, h4, h5 {
+        color: black !important;
+    }
+    .text-primary {
+        color: black !important;
+    }
+}
+</style>
+{% endblock %}
